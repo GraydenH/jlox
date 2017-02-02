@@ -13,6 +13,7 @@ class Scanner {
   private int start = 0;
   private int current = 0;
   private int line = 1;
+  private int comments = 0; // nested comments count
   private static final Map<String, TokenType> keywords;
 
   static {
@@ -72,6 +73,7 @@ class Scanner {
           // A comment goes until the end of the line.
           while (peek() != '\n' && !isAtEnd()) advance();
         } else if (match('*')) { // multi-line comment
+      	  comments++;
           comment();
         } else {
           addToken(SLASH);
@@ -149,17 +151,23 @@ class Scanner {
   }
 
   private void comment() {
-      while (((peek() != '*' && peekNext() != '/') || (peek() != '/' && peekNext() != '*')) && !isAtEnd()) {
+      while (!lookAhead('*', '/') && !lookAhead('/', '*') && !isAtEnd()) {
         if (peek() == '\n') line++;
         advance();
       }
 
-      if (peek() == '/' && peekNext() == '*') {
+      if (lookAhead('/', '*')) {
+    	  comments++;
+    	  advance();
+    	  advance();
     	  comment();
-      } else if (peek() == '*' && peekNext() == '/') {
-    	  advance();
-    	  advance();
+      } else if (lookAhead('*', '/')) {
+    	  comments--;
+		  advance();
+		  advance();
       }
+      
+      if (comments > 0) comment();
   }
 
   private boolean match(char expected) {
@@ -178,6 +186,11 @@ class Scanner {
   private char peekNext() {
     if (current + 1 >= source.length()) return '\0';
     return source.charAt(current + 1);
+  }
+  
+  private boolean lookAhead(char c1, char c2) {
+	  if (peek() == c1 && peekNext() == c2) return true;
+	  else return false;
   }
 
   private boolean isAlpha(char c) {
